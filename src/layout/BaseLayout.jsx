@@ -1,4 +1,4 @@
-import * as React from 'react'
+import React, { useContext } from 'react'
 import { styled, useTheme } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import MuiDrawer from '@mui/material/Drawer'
@@ -17,13 +17,22 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import AddIcon from '@mui/icons-material/Add'
 import ChatIcon from '@mui/icons-material/Chat'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
-import LightModeIcon from '@mui/icons-material/LightMode';
+import LightModeIcon from '@mui/icons-material/LightMode'
+import LogoutIcon from '@mui/icons-material/Logout'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useColorScheme } from '@mui/material/styles'
+import { AuthContext } from "../context/AuthProvider"
+
+/*
+La mayor porta de este componente lo extraje de material UI, solamente lo modifiqué en función de lo que requería.
+Esta es la URL "https://mui.com/material-ui/react-drawer/" de la parte donde obtuve este Drawer.
+El componente en específico es el "Mini variant drawer", URL directa "https://mui.com/material-ui/react-drawer/#MiniDrawer.js"
+Solo dejaré comentarios de las secciones que modifiqué.
+*/
 
 const drawerWidth = 240
 
@@ -105,38 +114,72 @@ const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' 
 )
 
 export default function BaseLayout() {
+  // Hook de react-router-dom para navegación programática
   const navigate = useNavigate()
+
+  // Hook para acceder al tema (tema claro/oscuro) desde el contexto del theme de MUI
   const theme = useTheme()
+
+  // Estado local para controlar si el Drawer (menú lateral) está abierto o cerrado
   const [open, setOpen] = React.useState(false)
 
+  // Hook para acceder y modificar el contexto de autenticación
+  const { setAuth } = useContext(AuthContext)
+
+  // Función para abrir el Drawer
   const handleDrawerOpen = () => {
     setOpen(true)
   }
 
+  // Función para cerrar el Drawer
   const handleDrawerClose = () => {
     setOpen(false)
   }
 
+  // Hook de MUI para manejar el esquema de colores (claro u oscuro)
   const { mode, setMode } = useColorScheme();
+
+  // Si el modo aún no está definido (puede ocurrir brevemente al cargar), no renderiza nada
   if (!mode) {
     return null;
   }
 
+  // Función que alterna entre modo claro y oscuro
   const toggleColorMode = () => {
     setMode(mode === 'light' ? 'dark' : 'light');
   }
 
+  // Función que se ejecuta al cerrar sesión: elimina datos del localStorage y actualiza el contexto de auth
+  const onClickLogout = () => {
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    setAuth({ token: null })
+  }
+
+  // Primer grupo de ítems del menú lateral
   const menuItems = [
     { text: 'Mis Tickets', index: <BookOnlineIcon />, path: '/home' },
-    { text: 'Comunicados', index: <ChatIcon />, path: '/notices' },
-  ]
-
-  const menuItemsBottom = [
-    { text: 'Configuración', index: <SettingsIcon />, path: '/settings' },
     { text: 'Nuevo Ticket', index: <AddIcon />, path: '/ticket' },
-    { text: mode === 'light' ? 'Tema Oscuro' : 'Tema Claro', index: mode === 'light' ? <DarkModeIcon /> : <LightModeIcon /> }
   ]
 
+  // Segundo grupo de ítems del menú lateral
+  const menuItems2 = [
+    { text: 'Comunicados', index: <ChatIcon />, path: '/notices' },
+    { text: 'Configuración', index: <SettingsIcon />, path: '/settings' },
+  ]
+
+  // Tercer grupo de ítems del menú lateral, incluyendo el cambio de tema y cierre de sesión
+  const menuItems3 = [
+    {
+      text: mode === 'light' ? 'Tema Oscuro' : 'Tema Claro',
+      index: mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />
+    },
+    {
+      text: 'Cerrar Sesión',
+      index: <LogoutIcon />,
+      path: '/login'
+    }
+  ]
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -161,7 +204,7 @@ export default function BaseLayout() {
           </Typography>
         </Toolbar>
       </AppBar>
-      <Drawer variant="permanent" open={open}>
+      <Drawer sx={{ '& .MuiDrawer-paper': { display: 'flex', flexDirection: 'column' } }} variant="permanent" open={open}>
         <DrawerHeader>
           <IconButton onClick={handleDrawerClose}>
             {theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
@@ -222,14 +265,69 @@ export default function BaseLayout() {
         </List>
         <Divider />
         <List>
-          {menuItemsBottom.map(({ text, index, path }) => (
+          {menuItems2.map(({ text, index, path }) => (
             <ListItem key={text} disablePadding sx={{ display: 'block' }}>
+              <ListItemButton
+                onClick={() => navigate(path)}
+                sx={[
+                  {
+                    minHeight: 48,
+                    px: 2.5,
+                  },
+                  open
+                    ? {
+                      justifyContent: 'initial',
+                    }
+                    : {
+                      justifyContent: 'center',
+                    },
+                ]}
+              >
+                <ListItemIcon
+                  sx={[
+                    {
+                      minWidth: 0,
+                      justifyContent: 'center',
+                    },
+                    open
+                      ? {
+                        mr: 3,
+                      }
+                      : {
+                        mr: 'auto',
+                      },
+                  ]}
+                >
+                  {index}
+                </ListItemIcon>
+                <ListItemText
+                  primary={text}
+                  sx={[
+                    open
+                      ? {
+                        opacity: 1,
+                      }
+                      : {
+                        opacity: 0,
+                      },
+                  ]}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+        <Divider />
+        <List sx={{ marginTop: 'auto' }}>
+          {menuItems3.map(({ text, index, path }) => (
+            <ListItem key={text} disablePadding>
               <ListItemButton
                 onClick={() => {
                   if (text === 'Tema Claro' || text === 'Tema Oscuro') {
-                    toggleColorMode();
+                    toggleColorMode()
+                  } else if (path === '/login') {
+                    onClickLogout(path)
                   } else {
-                    navigate(path);
+                    navigate(path)
                   }
                 }}
                 sx={[
@@ -279,6 +377,7 @@ export default function BaseLayout() {
             </ListItem>
           ))}
         </List>
+        <Divider />
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <DrawerHeader />

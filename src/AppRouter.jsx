@@ -1,18 +1,19 @@
-import React, { useContext } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import React, { useContext } from "react"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Login from "./pages/public/Login"
 import SignUp from "./pages/public/SignUp"
-import { AuthContext } from "./context/AuthProvider";
-import Home from "./pages/private/Home";
-import BaseLayout from "./layout/BaseLayout";
-import Notices from "./pages/private/Notices";
-import Setting from "./pages/private/Setting";
-import Tickets from "./pages/private/Tickets";
-import { ROUTES } from "./utils/const";
+import { AuthContext } from "./context/AuthProvider"
+import Home from "./pages/private/Home"
+import BaseLayout from "./layout/BaseLayout"
+import Notices from "./pages/private/Notices"
+import Setting from "./pages/private/Setting"
+import Tickets from "./pages/private/Tickets"
+import { ROUTES } from "./utils/const"
 
 export const AppRouter = () => {
     const { auth } = useContext(AuthContext)
-
+    // Manejo del enrutamiento en función si el usuario inició o no sesión
+    // Todos lo que esta aquí se entenderá mejor si revisa las constantes
     return (
         <BrowserRouter>
             <Routes>

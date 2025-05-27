@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Container, Box, Card, CardActionArea, CardContent, Typography, Paper, Switch, Grid, Button, Divider, Stack, Badge } from "@mui/material"
+import { Container, Box, Typography, Paper, Switch, Grid, Button } from "@mui/material"
 import FilterMenu from "../../utils/components/FilterMenu"
 import api from "../../api"
 import { ENDPOINTS, ROLE, STATES } from "../../utils/const"
@@ -9,55 +9,60 @@ import timezone from 'dayjs/plugin/timezone'
 import EditTicketDialog from '../../layout/EditTicket'
 import TicketInfoDialog from '../../layout/TicketInfoDialog'
 import TicketActionDialog from '../../layout/TicketActionDialog'
+import StandardAlerts from "../../utils/components/StandardAlert"
+import TicketCard from '../../layout/TicketCard'
 
+// Extensión de dayjs para manejo de zona horaria
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
 const Home = () => {
-
+  // Rol del usuario que inició sesión extraído del local storage
   const userRoleId = localStorage.getItem("user")
   const roleId = JSON.parse(userRoleId)
 
-  // Estado de los Cards
+  // Estado para controlar la tarjeta seleccionada y su dialogo
   const [selectedCard, setSelectedCard] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  // Estado para el contenido de los tickets
+  // Tickets cargados desde la API
   const [tickets, setTickets] = useState([])
 
-  // Estado de las categorías
+  // Filtros: categoría, estado y usuario
   const [categoryId, setCategoryId] = useState("")
   const [categoryFilter, setCategoryFilter] = useState([])
 
-  // Estado de los estados
   const [stateId, setStateId] = useState("")
   const [stateFilter, setStateFilter] = useState([])
 
-  // Estado de los usuarios
   const [userId, setUserId] = useState("")
   const [userFilter, setUserFilter] = useState([])
 
-  // Estado del swith que cambia el orden de las fechas
+  // Orden por fecha (switch)
   const [checked, setChecked] = useState(false)
 
-  // Estado de los operador / admins
+  // Filtro de operadores / admins
   const [operatorFilter, setOperatorFilter] = useState([])
 
-  // Estado del dialog emergente para el formulario del edit
+  // Dialogo para edición de ticket
   const [open, setOpen] = useState(false)
 
-  //  Maneja el estado apra abrir o cerrar el dialog de confirmación
+  // Dialogo de acciones como finalizar, cancelar, etc.
   const [actionDialogOpen, setActionDialogOpen] = useState(false)
-
-  // Maneja el tipo de acccion que se quiera tomar 
   const [actionType, setActionType] = useState("")
-
-  // Maneja el estado del ticket actual
   const [currentTicket, setCurrentTicket] = useState(null)
-
   const [requireComment, setRequireComment] = useState(false)
 
-  // Lógica para restablecer los filtros
+  // Estado para la alerta visual
+  const [showAlert, setShowAlert] = useState({
+    open: false,
+    severity: 'success',
+    content: 'exito',
+    vertical: 'top',
+    horizontal: 'center'
+  })
+
+  // Restablece los filtros a sus valores por defecto
   const resetFilters = () => {
     setCategoryId(0)
     setStateId(0)
@@ -66,16 +71,16 @@ const Home = () => {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  // logica para el cambio de las fechas
+  // Manejo del switch de orden por fecha
   const handleChange = (event) => {
     setChecked(event.target.checked)
   }
 
-  // Lógica de los menús  
+  // Controla el estado del menú desplegable
   const [menuAnchor, setMenuAnchor] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
 
-  // Estado del edit de los tickets
+  // Estado temporal para la edición de tickets
   const [editedTicket, setEditedTicket] = useState({
     category: "",
     state: "",
@@ -83,28 +88,31 @@ const Home = () => {
     reason: ""
   })
 
+  // Abre el menú correspondiente
   const handleMenuClick = (event, menuId) => {
     setMenuAnchor(event.currentTarget)
     setOpenMenuId(menuId)
   }
 
+  // Cierra cualquier menú abierto
   const handleMenuClose = () => {
     setMenuAnchor(null)
     setOpenMenuId(null)
   }
 
-  // maneja el estado de la apertura de lar cards
+  // Abre el dialog con la información del ticket
   const handleCardClick = (ticket) => {
     setSelectedCard(ticket)
     setDialogOpen(true)
   }
-  // Maneja el cierre del dialogo que tiene la informacion de la card
+
+  // Cierra el dialog de detalle del ticket
   const handleCloseDialog = () => {
     setDialogOpen(false)
     setSelectedCard(null)
   }
 
-  // manejadores para abrir y cerrar el dialog de los comentarios
+  // Abre el dialogo para ejecutar una acción sobre un ticket
   const openActionDialog = (ticket, action, requiresComment) => {
     setCurrentTicket(ticket)
     setActionType(action)
@@ -112,6 +120,7 @@ const Home = () => {
     setActionDialogOpen(true)
   }
 
+  // Cierra el dialogo de acción
   const closeActionDialog = () => {
     setActionDialogOpen(false)
     setCurrentTicket(null)
@@ -119,6 +128,12 @@ const Home = () => {
     setRequireComment(false)
   }
 
+  // Cierra el componente de alerta
+  const handleCloseAlert = () => {
+    setShowAlert(prev => ({ ...prev, open: false }))
+  }
+
+  // Confirma y ejecuta una acción sobre el ticket (finalizar, cancelar, etc.)
   const handleActionConfirm = async (comment) => {
     try {
       const update = {
@@ -126,26 +141,59 @@ const Home = () => {
         comment: comment || null,
         end_date: null
       }
+
+      // De ante mano pido perdon, a quién le toque mantener este código en el futuro, tiene que transformar este Switch en condicionales if, suerte!!! ♥
+      // En mi defenza quería probar el Switch ☻ 
       switch (actionType) {
         case "Finalizar":
           update.state_fk = STATES.FINISHED
           update.end_date = dayjs().tz("America/Santiago").format()
+          setShowAlert({
+            open: true,
+            severity: 'success',
+            content: 'El Ticket ha Sido Finalizado',
+            vertical:'bottom',
+            horizontal:'right'
+          })
           break
         case "Cancelar":
           update.state_fk = STATES.CANCELED
           update.end_date = dayjs().tz("America/Santiago").format()
+          setShowAlert({
+            open: true,
+            severity: 'warning',
+            content: 'El Ticket ha Sido Cancelado',
+            vertical:'bottom',
+            horizontal:'right'
+          })
           break
         case "Rechazar":
           update.state_fk = STATES.REFUSED
           update.end_date = dayjs().tz("America/Santiago").format()
+          setShowAlert({
+            open: true,
+            severity: 'warning',
+            content: 'El Ticket ha Sido Rechazado',
+            vertical:'bottom',
+            horizontal:'right'
+          })
           break
         case "Tomar":
           update.state_fk = STATES.ASSIGNED
           update.operator_fk = roleId.roleId
+          setShowAlert({
+            open: true,
+            severity: 'info',
+            content: 'El Ticket ha Sido Tomado',
+            vertical:'bottom',
+            horizontal:'right'
+          })
           break
         default:
           break
       }
+
+      // Se actualiza el ticket vía API y se recarga la lista
       await api.patch(ENDPOINTS.UPDATE_TICKET + currentTicket.id, update)
       await fetchTickets()
     } catch (error) {
@@ -155,6 +203,7 @@ const Home = () => {
     }
   }
 
+  // Abre el formulario para editar el ticket seleccionado
   const handleClickOpen = (ticket) => {
     setEditedTicket({
       id: ticket.id || null,
@@ -166,47 +215,19 @@ const Home = () => {
     setOpen(true)
   }
 
+  // Cierra el formulario de edición
   const handleClose = () => {
     setOpen(false)
   }
+
+  // Obtiene los filtros desde la API al cargar el componente
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        // Consumo de la API para obtener las categorias
-        const response = await api.get(ENDPOINTS.GET_CATEGORIES, {
-          params: {
-            offset: 0,
-            limit: 100,
-          }
-        }
-        )
-        // Consumo de la API para obtener los estados
-        const _response = await api.get(ENDPOINTS.GET_STATES,
-          {
-            params: {
-              offset: 0,
-              limit: 100,
-            }
-          }
-        )
-        // Consumo de la API para obtener a los usuarios 
-        const __response = await api.get(ENDPOINTS.GET_USERS,
-          {
-            params: {
-              offset: 0,
-              limit: 100,
-            }
-          }
-        )
-        // Consumo de la API para obtener a los operadores / administradores
-        const ___response = await api.get(ENDPOINTS.GET_USERS_BY_ROLE + roleId.roleId,
-          {
-            params: {
-              offset: 0,
-              limit: 100,
-            }
-          }
-        )
+        const response = await api.get(ENDPOINTS.GET_CATEGORIES, { params: { offset: 0, limit: 100 } })
+        const _response = await api.get(ENDPOINTS.GET_STATES, { params: { offset: 0, limit: 100 } })
+        const __response = await api.get(ENDPOINTS.GET_USERS, { params: { offset: 0, limit: 100 } })
+        const ___response = await api.get(ENDPOINTS.GET_USERS_BY_ROLE + roleId.roleId, { params: { offset: 0, limit: 100 } })
         setCategoryFilter(response.data)
         setStateFilter(_response.data)
         setUserFilter(__response.data)
@@ -217,9 +238,10 @@ const Home = () => {
     }
     fetchFilters()
   }, [])
+
+  // Carga los tickets según los filtros seleccionados
   const fetchTickets = async () => {
     try {
-
       const response = await api.get(ENDPOINTS.GET_TICKETS, {
         params: {
           offset: 0,
@@ -231,17 +253,20 @@ const Home = () => {
         }
       })
       setTickets(response.data)
-
     } catch (error) {
       console.error("Error al obtener las solicitudes:", error)
     }
   }
+
+  // Se ejecuta cada vez que cambian los filtros
   useEffect(() => {
     fetchTickets()
   }, [categoryId, stateId, userId, checked])
+
+  // Render del componente principal
   return (
-    <Container sx={{}}>
-      <Box>
+    <Container>
+      <Box sx={{ flexGrow: 1, mb: 1 }}>
         <Grid container>
           <Grid size={{ xs: 3, md: 1.5 }}>
             <Typography variant="h6" color="inherit" component="div" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -273,98 +298,33 @@ const Home = () => {
         <Grid size={{ sx: 12, md: 9 }}>
           <Paper sx={{ p: 2 }}>
             {tickets.map((ticket) => (
-              <Card variant="outlined" key={ticket.id} sx={{ mb: 1, width: "100%" }} elevation={4} >
-                <CardActionArea
-                  onClick={() => handleCardClick(ticket)}
-                  data-active={selectedCard?.id === ticket.id ? '' : undefined} component="div" sx={{ height: '100%', '&[data-active]': { backgroundColor: 'action.selected', '&:hover': { backgroundColor: 'action.selectedHover' } } }}>
-                  <CardContent>
-                    <Grid container spacing={2}>
-                      <Grid container size={9} columns={12}>
-                        <Grid size={5}>
-                          <Typography variant="h6" component="div">
-                            {`Ticket #${ticket.id}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={"grow"} />
-                        <Grid size={5}>
-                          <Typography variant="caption" component="div">
-                            {roleId.roleId === ROLE.ADMIN ? `Usuario: ${ticket?.users?.email ?? "usuario no asociado"}` : `Operador: ${ticket?.operators?.email ?? "usuario no asociado"}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={5}>
-                          <Typography variant="caption" display="block">
-                            {`Estado: ${ticket.states?.state ?? ticket.state_fk}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={"grow"} />
-                        <Grid size={5}>
-                          <Typography variant="caption" display="block">
-                            {`Categoría: ${ticket.categories?.category ?? ticket.state_fk}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={5}>
-                          <Typography noWrap={true} variant="body2">
-                            {`Motivo: ${ticket.reason}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={"grow"} />
-                        <Grid size={5}>
-                          <Typography noWrap={true} variant="body2">
-                            {`Comentario: ${ticket?.comment ?? ""}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={5}>
-                          <Typography variant="caption" display="block">
-                            {`Fecha inicio: ${new Date(ticket.start_date).toLocaleString()}`}
-                          </Typography>
-                        </Grid>
-                        <Grid size={"grow"} />
-                        <Grid size={5}>
-                          {ticket.end_date && (
-                            <Typography variant="caption" display="block">
-                              {`Fecha de Termino: ${new Date(ticket.end_date).toLocaleString()}`}
-                            </Typography>
-                          )}
-                        </Grid>
-                      </Grid>
-                      <Grid size={1}>
-                        <Divider orientation="vertical" />
-                      </Grid>
-                      <Grid size={2}>
-                        <Stack direction="column" gap={1} sx={{ height: '100%', justifyContent: 'space-around', alignItems: 'stretch' }}>
-
-                          {(roleId.roleId === ROLE.ADMIN && ticket?.state_fk === STATES.REQUESTED) &&
-                            <Button variant="outlined" onClick={(e) => (e.stopPropagation(), openActionDialog(ticket, "Tomar", false))}>
-                              Tomar
-                            </Button>
-                          }
-                          {(roleId.roleId === ROLE.ADMIN && ticket?.state_fk === STATES.ASSIGNED) &&
-                            // Se vizualiza el Botón Finalizar si el rol es administrador y el estado es asignado
-                            <Button variant="outlined" onClick={(e) => (e.stopPropagation(), openActionDialog(ticket, "Finalizar", true))}>
-                              Finalizar
-                            </Button>
-                          }
-                          {(ticket?.state_fk !== STATES.ASSIGNED) &&
-                            // Se vizualiza el Botón editar si el rol es administrador y el estado es solicitado
-                            <Button disabled={roleId.roleId === ROLE.USER && (ticket?.state_fk !== STATES.REQUESTED)} variant="outlined" onClick={(e) => (e.stopPropagation(), handleClickOpen(ticket))}>
-                              Editar
-                            </Button>
-                          }
-                          {(ticket?.state_fk === STATES.REQUESTED) &&
-                            <Button variant="outlined" onClick={(e) => { e.stopPropagation(); const label = roleId.roleId === ROLE.ADMIN ? "Rechazar" : "Cancelar"; openActionDialog(ticket, label, true) }}>
-                              {roleId.roleId === ROLE.ADMIN ? "Rechazar" : "Cancelar"}
-                            </Button>
-                          }
-                        </Stack>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                selected={selectedCard?.id === ticket.id}
+                roleId={roleId.roleId}
+                onCardClick={handleCardClick}
+                onEditClick={handleClickOpen}
+                onActionClick={openActionDialog}
+              />
             ))}
+
+            {/* Dialog de edición de ticket */}
             {open && (
-              <EditTicketDialog open={open} handleClose={handleClose} editedTicket={editedTicket} setEditedTicket={setEditedTicket} fetchTickets={fetchTickets} roleId={roleId} categoryFilter={categoryFilter} stateFilter={stateFilter} operatorFilter={operatorFilter} />
+              <EditTicketDialog
+                open={open}
+                handleClose={handleClose}
+                editedTicket={editedTicket}
+                setEditedTicket={setEditedTicket}
+                fetchTickets={fetchTickets}
+                roleId={roleId}
+                categoryFilter={categoryFilter}
+                stateFilter={stateFilter}
+                operatorFilter={operatorFilter}
+              />
             )}
+
+            {/* Dialog de información del ticket */}
             {dialogOpen && selectedCard && (
               <TicketInfoDialog
                 open={dialogOpen}
@@ -372,6 +332,8 @@ const Home = () => {
                 ticket={selectedCard}
               />
             )}
+
+            {/* Dialog para acciones (finalizar, cancelar, etc.) */}
             <TicketActionDialog
               open={actionDialogOpen}
               handleClose={closeActionDialog}
@@ -379,6 +341,17 @@ const Home = () => {
               action={actionType}
               requireComment={requireComment}
             />
+
+            {/* Alerta visual */}
+            {showAlert && (
+              <StandardAlerts
+                severity={showAlert.severity}
+                content={showAlert.content}
+                open={showAlert.open}
+                position={{ vertical: showAlert.vertical, horizontal: showAlert.horizontal }}
+                handleClose={handleCloseAlert}
+              />
+            )}
           </Paper>
         </Grid>
       </Grid>

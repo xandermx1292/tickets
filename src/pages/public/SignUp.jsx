@@ -1,5 +1,7 @@
 import React from "react"
 
+// Este vista ya exite y por ende hay que utilizar la ya existente
+
 function SignUp(){
 
     function Title(){

@@ -161,6 +161,7 @@ function EditTicketDialog({
                     label="Motivo del ticket"
                     type="text"
                     fullWidth
+                    required
                     value={localTicket.reason}
                     onChange={(e) =>
                         setLocalTicket({ ...localTicket, reason: e.target.value })

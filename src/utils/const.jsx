@@ -13,8 +13,8 @@ export const ROLE = {
 // Estas son las rutas de los ENDPOINTS O PATH de las APIs
 export const ENDPOINTS = {
     // EndPoints del LOGIN
-    LOGIN_AUTH: 'http://10.208.31.217:3000/api/login',
-    USERS_ACTIVE: 'http://10.208.31.217:3000/api/users/1',
+    LOGIN_AUTH: 'http://10.208.31.18:3000/api/login',
+    USERS_ACTIVE: 'http://10.208.31.18:3000/api/users/1',
     
     // EndPoints para los Tickets
     CREATE_TICKET: "/ticket/ticket/",
@@ -22,21 +22,22 @@ export const ENDPOINTS = {
     GET_FILTERS: "/ticket/filters/",
     UPDATE_TICKET: "/ticket/update/",
     
-    // EndPoints para las Categorías
+    // EndPoint para la Categoría del Ticket
     GET_CATEGORIES: "/category/categories/",
+    // EndPoint para el estado de los Tickets
     GET_STATES: "/state/states/",
+    // EndPoint para el usuario
     GET_USERS: "/user/users/",
     GET_USERS_BY_ROLE: "/user/users/"
 
 }
-
 
 /* --------------------------------------------- */
 
 // Estas son las rutas de la navegación
 export const ROUTES = {
     MAIN:"/",
-    // utas Publicas
+    // Rutas Publicas
     LOGIN: "/login",
     SIGNUP: "/signup",
 
